@@ -6,33 +6,24 @@ st.set_page_config(page_title="Master Trade Live", layout="wide")
 st.title("📈 Master Trade Live")
 
 # Sidebar
-symbol = st.sidebar.text_input("Enter Symbol (e.g., BTC-USD)", "BTC-USD")
-period = st.sidebar.selectbox("Period", ["5d", "1mo", "6mo"]) # 5d is better for weekends
-interval = st.sidebar.selectbox("Interval", ["1h", "1d", "15m"])
+symbol = st.sidebar.text_input("Enter Symbol", "BTC-USD")
+# Use '5d' period so you can see data even on weekends!
+data = yf.download(symbol, period="5d", interval="15m")
 
-# Fetch Data
-with st.spinner('Fetching data...'):
-    data = yf.download(symbol, period=period, interval=interval)
-
-# --- THE FIX: Error Handling ---
+# --- THE FIX: Safety Check ---
 if data is not None and not data.empty:
-    # Check if we actually have the 'Close' column and data in it
-    if len(data) > 0:
-        fig = go.Figure(data=[go.Candlestick(
-            x=data.index,
-            open=data['Open'],
-            high=data['High'],
-            low=data['Low'],
-            close=data['Close']
-        )])
-        fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False)
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Only show price if it exists to avoid TypeError
-        last_price = data['Close'].iloc[-1]
-        st.success(f"Latest Price for {symbol}: {last_price:.2f}")
-    else:
-        st.warning("Data found, but it is too limited to display a chart.")
+    # 1. Draw the Chart
+    fig = go.Figure(data=[go.Candlestick(
+        x=data.index, open=data['Open'], high=data['High'],
+        low=data['Low'], close=data['Close']
+    )])
+    fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False)
+    st.plotly_chart(fig, use_container_width=True)
+    
+    # 2. Show Price ONLY if data exists (Fixes TypeError)
+    last_price = data['Close'].iloc[-1]
+    st.success(f"Latest Price for {symbol}: {last_price:.2f}")
 else:
-    st.error(f"⚠️ No data found for '{symbol}'.")
-    st.info("💡 Note: Indian Markets (NSE/BSE) are CLOSED on weekends. Try testing with 'BTC-USD' to see a live chart right now.")
+    # This shows instead of the red error box
+    st.error(f"⚠️ No live data for '{symbol}' right now.")
+    st.info("Indian Markets are CLOSED on weekends. Try 'BTC-USD' to see a live crypto chart!")
